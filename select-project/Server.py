@@ -63,6 +63,8 @@ try:
                 except KeyError: pass
                 try: ous.remove(x)
                 except ValueError: pass
+                try: ins.remove(x)
+                except ValueError: pass
                 x.send('fin')
                 x.close
                 break;
