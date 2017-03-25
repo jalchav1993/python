@@ -2,6 +2,7 @@
 import socket
 import sys
 import json
+import Queue
 serverHost = 'localhost'
 serverPort = 50005
 
@@ -41,15 +42,12 @@ while flag:
         s.send(json.dumps({'request':'get','params':'file1.txt'}))
         state = S_ACK
     data = s.recv(1024)
-    print "%s" % data
-    if data.endswith("!$!$!fin!$!$!"):
-        print "\nfin exiting now"
+    buffer+=data
+    #print "%s" % data
+    if data == "404" and state == S_ACK:
+        state = S_FIN
+    if data.endswith("!$!$!fin!$!$!") or state == S_FIN:
+        print "\nfin exiting now\n%s"%buffer[0:len(buffer)-14]
         break
-    elif data and state == S_ACK:
-        s.send(json.dumps({'request':'ack', 'params':'data'}))
-        state = S_FIN
-    elif data == "404" and state == S_ACK:
-        s.send(json.dumps({'request':'ack', 'params':'404'}))
-        state = S_FIN
 s.close()
 

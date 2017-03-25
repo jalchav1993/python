@@ -63,9 +63,6 @@ try:
                 except:
                     states[x] = S_FIN
                     output=outputMap[x] = "404"
-            elif state == S_ACK and input['request']=="ack":
-                states[x] = S_FIN
-                output=outputMap[x] = "FIN"
             if output:
                 nsent = x.send(output)
                 print "%d bytes to %s" % (nsent, adrs[x])
