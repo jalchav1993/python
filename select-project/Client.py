@@ -35,20 +35,22 @@ if s is None:
     print 'could not open socket'
     sys.exit(1)
 flag = 1;
+buffer = ""
 while flag:
     if state == S_INIT:
         s.send(json.dumps({'request':'get','params':'file1.txt'}))
         state = S_ACK
     data = s.recv(1024)
-    print "%s" %data
+    print "data: %s state:%s" %(data,state)
     if data and state == S_ACK:
         s.send(json.dumps({'request':'ack', 'params':'ack'}))
-        state == S_FIN
+        buffer = data;
+        state = S_FIN
+        print "%s" % state
     elif data == "404" and state == S_ACK:
         s.send(json.dumps({'request':'ack', 'params':'ack'}))
         state = S_FIN
     elif data == state and state == S_FIN:
-        s.close()
-        flag = 0
-        break;
-s.close()
+        print "fin fin fin"
+print "%s" % buffer
+

@@ -53,31 +53,17 @@ try:
         for x in o:
             output = ""
             state = states.get(x)
-            if state == S_FIN:
-                print"ending"
-                try: del inputMap[x]
-                except KeyError: pass
-                try: del outputMap[x]
-                except KeyError: pass
-                try: del states[x]
-                except KeyError: pass
-                try: ous.remove(x)
-                except ValueError: pass
-                try: ins.remove(x)
-                except ValueError: pass
-                x.send('fin')
-                x.close
-                break;
             input = json.loads(inputMap.get(x))
             print "%s %s" %(state,input)
-            if state == S_INIT and input['request'] == "GET":
+            if state == S_INIT and input['request'] == "get":
                 try:
+                    file = open(input['params'], "r+")
                     states[x] = S_ACK
-                    output=outputMap[x] = getFile(input['params'])
+                    output=outputMap[x] = file.read()
                 except:
                     states[x] = S_FIN
                     output=outputMap[x] = "404"
-            elif state == S_ACK and input['request']=="ACK":
+            elif state == S_ACK and input['request']=="ack":
                 states[x] = S_FIN
                 output=outputMap[x] = "FIN"
             if output:
@@ -92,5 +78,20 @@ try:
             else:
                 print "No data currently remain for", adrs[x]
                 states[x]= S_FIN
+            if states[x] == S_FIN:
+                print"ending"
+                try: del inputMap[x]
+                except KeyError: pass
+                try: del outputMap[x]
+                except KeyError: pass
+                try: del states[x]
+                except KeyError: pass
+                try: ous.remove(x)
+                except ValueError: pass
+                try: ins.remove(x)
+                except ValueError: pass
+                x.send('fin')
+                x.close
+                break
 finally:
     s.close(  )
