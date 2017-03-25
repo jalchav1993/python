@@ -5,6 +5,12 @@ import sys
 serverHost = 'localhost'
 serverPort = 50006
 
+S_INIT = "init"
+S_GET = "get"
+S_ACK = "ack"
+S_FIN = "fin"
+state = S_INIT
+
 s = None
 for res in socket.getaddrinfo(serverHost, serverPort, socket.AF_UNSPEC, socket.SOCK_STREAM):
     af, socktype, proto, canonname, sa = res
@@ -29,23 +35,17 @@ if s is None:
     print 'could not open socket'
     sys.exit(1)
 
-outMessage = "Hello world!"
-
-print "sending '%s'" % outMessage
-s.send(outMessage)
-
-data = s.recv(1024)
-print "Received '%s'" % data
-
-print "sending '%s'" % outMessage
-s.send(outMessage)
-
-s.shutdown(socket.SHUT_WR)      # no more output
-
 while 1:
+    if state == S_INIT:
+        s.send(JSONencode({'request':'get','params':'file1.txt'}))
+        state = S_ACK
     data = s.recv(1024)
-    print "Received '%s'" % data
-    if len(data) == 0:
-        break
-print "Zero length read.  Closing"
+    if data and state == S_ACK:
+        s.send("ack")
+        state = S_FIN
+    elif data == "404" and state == S_ACK:
+        s.send("ack")
+        state = S_FIN
+    elif data == state and state == S_FIN:
+        break;
 s.close()
