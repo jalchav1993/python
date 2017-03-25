@@ -1,9 +1,9 @@
 # Echo client program
 import socket
 import sys
-
+import json
 serverHost = 'localhost'
-serverPort = 50006
+serverPort = 50005
 
 S_INIT = "init"
 S_GET = "get"
@@ -34,18 +34,21 @@ for res in socket.getaddrinfo(serverHost, serverPort, socket.AF_UNSPEC, socket.S
 if s is None:
     print 'could not open socket'
     sys.exit(1)
-
-while 1:
+flag = 1;
+while flag:
     if state == S_INIT:
-        s.send(JSONencode({'request':'get','params':'file1.txt'}))
+        s.send(json.dumps({'request':'get','params':'file1.txt'}))
         state = S_ACK
     data = s.recv(1024)
+    print "%s" %data
     if data and state == S_ACK:
-        s.send("ack")
-        state = S_FIN
+        s.send(json.dumps({'request':'ack', 'params':'ack'}))
+        state == S_FIN
     elif data == "404" and state == S_ACK:
-        s.send("ack")
+        s.send(json.dumps({'request':'ack', 'params':'ack'}))
         state = S_FIN
     elif data == state and state == S_FIN:
+        s.close()
+        flag = 0
         break;
 s.close()

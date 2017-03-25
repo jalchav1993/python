@@ -1,32 +1,17 @@
 # Echo server program
 import socket
+import json
+import sys
+import select
 
 clientHost = ''                 # Symbolic name meaning all available interfaces
-clientPort = 50006              # Arbitrary non-privileged port
+clientPort = 50005              # Arbitrary non-privileged port
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((clientHost, clientPort))
-s.listen(1)              # allow only one outstanding request
-# s is not a factory for connected sockets
+s.listen(10)              
 
-conn, addr = s.accept()  # wait until incoming connection request (and accept it)
-print 'Connected by', addr
-while 1:
-    data = conn.recv(1024)
-    if not data: break
-    sendMsg = "Echoing %s" % data
-    print "Received '%s', sending '%s'" % (data, sendMsg)
-    conn.send(sendMsg)
-conn.close()
-
-import socket
-import select
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.bind(('', 8881))
-sock.listen(5)
-
-# lists of sockets to watch for input and output events
-ins = [sock]
+ins = [s]
 ous = []
 
 # mapping socket -> (host, port) on which the client is running
@@ -37,14 +22,15 @@ outputMap ={}
 inputMap ={}
 S_INIT = "init"
 S_GET = "get"
+S_ACK = "ack"
 S_FIN = "fin"
 try:
     while True:
         i, o, e = select.select(ins, ous, [])  # no excepts nor timeout
         for x in i:
-            if x is sock:
+            if x is s:
                 # input event on sock means client trying to connect
-                newSocket, address = sock.accept(  )
+                newSocket, address = s.accept(  )
                 print "Connected from", address
                 ins.append(newSocket)
                 adrs[newSocket] = address
@@ -55,7 +41,7 @@ try:
                 if newdata:
                     # data arrived, prepare and queue the response to it
                     print "%d bytes from %s" % (len(newdata), adrs[x])
-                    inputSet[x] = newdata
+                    inputMap[x] = newdata
                     if x not in ous: ous.append(x)
                 else:
                     # a disconnect, give a message and clean up
@@ -65,27 +51,33 @@ try:
                     except ValueError: pass
                     x.close(  )
         for x in o:
-            state = state.get(x)
-            input = JSONdecode(inputMap.get(x))
-            if state == S_INIT and input['request'] == "GET":
-                try:
-                    state[x] = S_ACK
-                    outputMap[x] = getFile(input['params'])
-                except:
-                    state[x] = S_FIN
-                    outputMap[x] = "404"
-            elif state == S_ACK and input['request']=="ACK":
-                state[x] = S_FIN
-                outputMap[x] = "FIN"
-            elif state == S_FIN:
+            output = ""
+            state = states.get(x)
+            if state == S_FIN:
+                print"ending"
                 try: del inputMap[x]
                 except KeyError: pass
                 try: del outputMap[x]
                 except KeyError: pass
-                try: del state[x]
+                try: del states[x]
                 except KeyError: pass
+                try: ous.remove(x)
+                except ValueError: pass
+                x.send('fin')
+                x.close
                 break;
-            output = outputMap[x]
+            input = json.loads(inputMap.get(x))
+            print "%s %s" %(state,input)
+            if state == S_INIT and input['request'] == "GET":
+                try:
+                    states[x] = S_ACK
+                    output=outputMap[x] = getFile(input['params'])
+                except:
+                    states[x] = S_FIN
+                    output=outputMap[x] = "404"
+            elif state == S_ACK and input['request']=="ACK":
+                states[x] = S_FIN
+                output=outputMap[x] = "FIN"
             if output:
                 nsent = x.send(output)
                 print "%d bytes to %s" % (nsent, adrs[x])
@@ -93,10 +85,10 @@ try:
                 output = output[nsent:]
             if output: 
                 print "%d bytes remain for %s" % (len(tosend), adrs[x])
-                outputMap[x] = tosend
-                state[x]= S_GET
+                outputMap[x] = output
+                states[x]= S_GET
             else:
                 print "No data currently remain for", adrs[x]
-                state[x]= S_FIN
+                states[x]= S_FIN
 finally:
-    sock.close(  )
+    s.close(  )
