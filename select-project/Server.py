@@ -37,7 +37,7 @@ try:
                 states[newSocket] = S_INIT
             else:
                 # other input events mean data arrived, or disconnections
-                newdata = x.recv(8192)
+                newdata = x.recv(1024)
                 if newdata:
                     # data arrived, prepare and queue the response to it
                     print "%d bytes from %s" % (len(newdata), adrs[x])
@@ -90,7 +90,7 @@ try:
                 except ValueError: pass
                 try: ins.remove(x)
                 except ValueError: pass
-                x.send('fin')
+                x.send('!$!$!fin!$!$!')
                 x.close
                 break
 finally:

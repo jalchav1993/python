@@ -41,16 +41,15 @@ while flag:
         s.send(json.dumps({'request':'get','params':'file1.txt'}))
         state = S_ACK
     data = s.recv(1024)
-    print "data: %s state:%s" %(data,state)
-    if data and state == S_ACK:
-        s.send(json.dumps({'request':'ack', 'params':'ack'}))
-        buffer = data;
+    print "%s" % data
+    if data.endswith("!$!$!fin!$!$!"):
+        print "\nfin exiting now"
+        break
+    elif data and state == S_ACK:
+        s.send(json.dumps({'request':'ack', 'params':'data'}))
         state = S_FIN
-        print "%s" % state
     elif data == "404" and state == S_ACK:
-        s.send(json.dumps({'request':'ack', 'params':'ack'}))
+        s.send(json.dumps({'request':'ack', 'params':'404'}))
         state = S_FIN
-    elif data == state and state == S_FIN:
-        print "fin fin fin"
-print "%s" % buffer
+s.close()
 
